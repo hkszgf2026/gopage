@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 網路安全實戰專案培訓 // 2026</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-deep: #050505;
+            --bg-panel: rgba(20, 30, 40, 0.6);
+            --primary: #00ff9d; /* 赛博绿 */
+            --primary-dim: rgba(0, 255, 157, 0.1);
+            --secondary: #00bcff; /* 全息蓝 */
+            --text-main: #e0e0e0;
+            --text-muted: #64748b;
+            --border: rgba(255, 255, 255, 0.08);
+            --scanline-color: rgba(0, 255, 157, 0.05);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: 'JetBrains Mono', monospace;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* --- 动态背景特效 --- */
+        .cyber-grid {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: 
+                linear-gradient(rgba(0, 255, 157, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 157, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            transform: perspective(500px) rotateX(60deg) scale(2);
+            transform-origin: top center;
+            animation: gridMove 20s linear infinite;
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        @keyframes gridMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 600px; }
+        }
+
+        /* --- 登录界面 --- */
+        #login-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 5, 5, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            transition: opacity 0.6s ease;
+        }
+
+        .login-box {
+            width: 340px;
+            padding: 2.5rem;
+            background: rgba(10, 15, 20, 0.8);
+            border: 1px solid var(--primary);
+            box-shadow: 0 0 20px rgba(0, 255, 157, 0.1), inset 0 0 20px rgba(0, 255, 157, 0.05);
+            text-align: center;
+            position: relative;
+        }
+
+        .login-box::before {
+            content: ''; position: absolute; top: -2px; left: -2px; width: 10px; height: 10px;
+            border-top: 2px solid var(--primary); border-left: 2px solid var(--primary);
+        }
+        .login-box::after {
+            content: ''; position: absolute; bottom: -2px; right: -2px; width: 10px; height: 10px;
+            border-bottom: 2px solid var(--primary); border-right: 2px solid var(--primary);
+        }
+
+        h2 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--primary);
+            margin: 0 0 1.5rem 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px var(--primary);
+        }
+
+        input[type="password"] {
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid #333;
+            color: #fff;
+            padding: 10px 5px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            text-align: center;
+            outline: none;
+            transition: 0.3s;
+            letter-spacing: 4px;
+        }
+
+        input[type="password"]:focus {
+            border-bottom-color: var(--primary);
+            box-shadow: 0 10px 10px -10px rgba(0, 255, 157, 0.2);
+        }
+
+        .btn-unlock {
+            margin-top: 2rem;
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-unlock:hover {
+            background: var(--primary);
+            color: #000;
+            box-shadow: 0 0 15px var(--primary);
+        }
+
+        /* --- 主内容区 --- */
+        #main-content {
+            display: none;
+            width: 100%;
+            max-width: 1100px;
+            padding: 40px 20px;
+            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 4rem;
+            position: relative;
+        }
+
+        header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.2rem;
+            background: linear-gradient(to right, #fff, var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+        }
+
+        .subtitle {
+            font-size: 0.8rem;
+            color: var(--primary);
+            letter-spacing: 4px;
+            margin-top: 10px;
+            opacity: 0.8;
+        }
+
+        /* --- 分类标题 --- */
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin: 3rem 0 1.5rem 0;
+            color: var(--secondary);
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        .section-header::before {
+            content: '>>';
+            margin-right: 10px;
+            color: var(--primary);
+        }
+
+        .line { flex: 1; height: 1px; background: rgba(0, 188, 255, 0.2); margin-left: 15px; }
+
+        /* --- 卡片网格 --- */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-left: 3px solid transparent;
+            padding: 1.5rem;
+            position: relative;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255,255,255,0.2);
+            border-left-color: var(--primary);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .card h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.1rem;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .card-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .data-val {
+            color: var(--secondary);
+            background: rgba(0, 188, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .data-val:hover {
+            background: var(--secondary);
+            color: #000;
+        }
+
+        .note {
+            font-size: 0.75rem;
+            color: #555;
+            margin-top: 10px;
+            border-top: 1px dashed rgba(255,255,255,0.1);
+            padding-top: 8px;
+        }
+
+        .download-btn {
+            display: block;
+            text-align: center;
+            margin-top: 15px;
+            padding: 8px;
+            font-size: 0.8rem;
+            text-decoration: none;
+            color: var(--bg-deep);
+            background: var(--text-main);
+            font-weight: bold;
+            transition: 0.2s;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+
+        .download-btn:hover {
+            background: var(--primary);
+        }
+
+        /* --- 提示框 Toast --- */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: var(--primary);
+            color: #000;
+            text-align: center;
+            border-radius: 2px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1001;
+            right: 30px;
+            bottom: 30px;
+            font-weight: bold;
+            box-shadow: 0 0 15px var(--primary);
+            transform: translateY(100%);
+            transition: transform 0.3s;
+        }
+        #toast.show {
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        #error-msg { color: #ff3333; margin-top: 15px; font-size: 0.8rem; display: none; }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 移动端适配 */
+        @media (max-width: 600px) {
+            .login-box { width: 90%; }
+            header h1 { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="cyber-grid"></div>
+    <div class="scanlines"></div>
+
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>System Access</h2>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 20px;">SECURITY CLEARANCE REQUIRED</p>
+            <input type="password" id="password" placeholder="PASSWORD" onkeyup="if(event.key === 'Enter') decrypt()">
+            <button class="btn-unlock" onclick="decrypt()">INITIALIZE</button>
+            <div id="error-msg">ACCESS DENIED // 密码错误</div>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <header>
+            <h1>2026 網路安全實戰專案培訓</h1>
+            <div class="subtitle">INTERNAL NETWORK NAVIGATION SYSTEM</div>
+        </header>
+
+        <div id="content-area"></div>
+    </div>
+
+    <div id="toast">DATA COPIED TO CLIPBOARD</div>
+
+    <script>
+        // 🟢 重点：请在此处填入第一步生成的加密字符串
+        const encryptedData = "U2FsdGVkX18IwI/qOrnsOPJcZOyQNHyH9qHGulJwkIq5NCHev7kMpfJAqTcY+JIIk8IU4kAPh5tTn9hHoNT+VtjgNoGFLry5vICPAwt7PguCYqJLRID3xOiqhBtDBBzoBjA7768giQ6NFoQ+dnvuyX/bbG9OtIN8ZE4ludqNgbwVUuMkJuLpgumEF+vjsMS+nEi3OrbdYWGUqLg8iX+OkPbYo5u+X9+HYKunNI4w1tQNMsVdI+wv+Yq1yB9dWskQeXm+LKZ/7YB95Jh8Ih3GXLg0vg7YQfRd22BF69LpLdAwhYsRPx+9+/cgXY2v1pCC7YNB488XOUaBSTAYgi99dl8vcz0Omgl0UoIAWYuGASoieLXZdQzM2oG0n7DkkcQqW4W9ePqEVsXM8PiSqMeOE+aCYmOQh1UKEPbBsiWw0wvE1PLsnQgcf+XGg8JM6SIzwfaUjMkqj8geyQEv93bTP5AncjwScKCWwsAqoPbQzuqd6j+CyHNU/pUBvPsaZmTNYGAdbT79lxrFB7rWWBeZV78Qi2bCKNHcyyDVhp/YQU9E4qgufYLqtlmQr68O/U5O4PiBDuF44ztHIvViA2MczYTh6AjchDtkrmH9uGA2AnQwMvq243dniZPjx/CHs4wpX4pxjpJxUTFq0EgdLoAHTGdIz6pI2LhxnIvK9U2FpxcGAmNCOF/uTcN7RrHJl7fQP8R5Tvrheemr3Q2JO7HI3AgyodkaKVSDM2n1NlOyXkEs1SIPgarHIiQ1uyqhK+CP+mZ+luYsE0RaemwKfbUnIIMFEpBrjozmtBZxDAnYf0qxHFjmAmbY8+cgS+Wx+n/lAUbNwbCVDd4ryCDvO/7CM0KxDtv5TNgC+AVzKqJr74jOGeLaG+yYhMgUHbGGXwREWykXRAWrQqnf5FNmlttk2ejTdK6ueXhcjrH/rp4UgJDY6ky6laAXAlkfKGmAp0NnlDW4uH0JrShkeh5ymrJtiqeVNZgfRkFou5Yp7/6prq0MgIv7BwNCZPlAP47SCXpQtlMhxl3Eux4XpXflR/bYShfEWqor3g7rHaO/be/j2eDqFvNl9YQHOYoITPNBFC8SUIfSHIEeujVldpBHe3TQbWmrPkoJMlq39f4fxYEyJOfc6tul0DHPsmf5KQ8T9oMUiSL1hLsXVj2ZFPCBsvsCUzkXdsRwAUNDijbfmMEFhFd2aF77Dti9RqOirFgL4f7Uz4oIZE/GjlGfzrfWOkwQ4SGsflVDrkiCoQQDPkgMySc2Ddtx/F/ubcjBKW1qk02g"; 
+
+        function decrypt() {
+            const pwd = document.getElementById('password').value;
+            const errorMsg = document.getElementById('error-msg');
+            
+            if(!pwd) return;
+            if(encryptedData === "") {
+                alert("ERR: 缺少加密数据。请检查 HTML 源码中的 encryptedData 变量。");
+                return;
+            }
+
+            try {
+                const bytes = CryptoJS.AES.decrypt(encryptedData, pwd);
+                const originalText = bytes.toString(CryptoJS.enc.Utf8);
+
+                if (!originalText) throw new Error("Decryption failed");
+
+                const data = JSON.parse(originalText);
+                renderPage(data);
+                
+                // 动画切换
+                const loginScreen = document.getElementById('login-screen');
+                loginScreen.style.opacity = '0';
+                setTimeout(() => {
+                    loginScreen.style.display = 'none';
+                    document.getElementById('main-content').style.display = 'block';
+                }, 600);
+
+            } catch (e) {
+                console.error(e);
+                errorMsg.style.display = 'block';
+                // 错误震动效果
+                const box = document.querySelector('.login-box');
+                box.style.animation = "shake 0.3s";
+                setTimeout(()=> box.style.animation = "", 300);
+            }
+        }
+
+        // 定义震动动画
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `@keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } 100% { transform: translateX(0); } }`;
+        document.head.appendChild(styleSheet);
+
+        function renderPage(data) {
+            const container = document.getElementById('content-area');
+            let html = '';
+
+            // 靶场
+            html += createSection('TARGET_ZONE', '靶场环境', data.targets);
+            // 工具
+            html += createSection('WEAPONRY', '实战工具', data.tools);
+            // 下载
+            html += createSection('SUPPLY_DROP', '资源下载', data.downloads);
+
+            container.innerHTML = html;
+        }
+
+        function createSection(code, title, items) {
+            let html = `
+                <div class="section-header">
+                    <span>[${code}] ${title}</span>
+                    <div class="line"></div>
+                </div>
+                <div class="grid">`;
+            
+            items.forEach(item => {
+                html += createCard(item);
+            });
+            html += `</div>`;
+            return html;
+        }
+
+        function createCard(item) {
+            let details = '';
+            let action = '';
+
+            if (item.ip) {
+                details += `
+                    <div class="card-row">
+                        <span>HOST/IP</span>
+                        <span class="data-val" onclick="copyText('${item.ip}')" title="点击复制">${item.ip}</span>
+                    </div>`;
+            }
+
+            if (item.note) {
+                // 如果note里包含密码，高亮显示
+                let noteHtml = item.note;
+                if(noteHtml.includes("密码") || noteHtml.includes("admin")) {
+                    noteHtml = `<span style="color:var(--primary)">${noteHtml}</span>`;
+                }
+                details += `<div class="note">${noteHtml}</div>`;
+            }
+
+            if (item.link) {
+                if(!item.ip) { // 如果是纯下载链接
+                     details += `<div class="card-row"><span>SOURCE</span><span style="font-size:0.7em">EXTERNAL_LINK</span></div>`;
+                }
+                action = `<a href="${item.link}" target="_blank" class="download-btn">ACCESS LINK</a>`;
+            }
+
+            return `
+                <div class="card">
+                    <h3>${item.title}</h3>
+                    ${details}
+                    ${action}
+                </div>
+            `;
+        }
+
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(`已复制: ${text}`);
+            });
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById("toast");
+            toast.innerText = msg;
+            toast.className = "show";
+            setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+    </script>
+</body>
+</html>
